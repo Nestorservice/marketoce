@@ -1,48 +1,75 @@
-import * as React from "react"
-import * as AvatarPrimitive from "@radix-ui/react-avatar"
+import React, { forwardRef } from 'react';
+import { View, Image, Text, StyleSheet } from 'react-native';
 
-import { cn } from "@/lib/utils"
+// Utility function to combine styles
+const cn = (...classes: (string | undefined)[]) => classes.filter(Boolean).join(' ');
 
-const Avatar = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Root
+interface AvatarProps {
+  style?: any;
+  children: React.ReactNode;
+}
+
+const Avatar = forwardRef<View, AvatarProps>(({ style, children }, ref) => (
+  <View
     ref={ref}
-    className={cn(
-      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
-      className
-    )}
-    {...props}
-  />
-))
-Avatar.displayName = AvatarPrimitive.Root.displayName
+    style={[styles.avatar, style]}
+  >
+    {children}
+  </View>
+));
+Avatar.displayName = 'Avatar';
 
-const AvatarImage = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Image>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image
+interface AvatarImageProps {
+  style?: any;
+  source: { uri: string };
+}
+
+const AvatarImage = forwardRef<Image, AvatarImageProps>(({ style, source }, ref) => (
+  <Image
     ref={ref}
-    className={cn("aspect-square h-full w-full", className)}
-    {...props}
+    source={source}
+    style={[styles.avatarImage, style]}
   />
-))
-AvatarImage.displayName = AvatarPrimitive.Image.displayName
+));
+AvatarImage.displayName = 'AvatarImage';
 
-const AvatarFallback = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Fallback>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Fallback
+interface AvatarFallbackProps {
+  style?: any;
+  children: React.ReactNode;
+}
+
+const AvatarFallback = forwardRef<View, AvatarFallbackProps>(({ style, children }, ref) => (
+  <View
     ref={ref}
-    className={cn(
-      "flex h-full w-full items-center justify-center rounded-full bg-muted",
-      className
-    )}
-    {...props}
-  />
-))
-AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
+    style={[styles.avatarFallback, style]}
+  >
+    {children}
+  </View>
+));
+AvatarFallback.displayName = 'AvatarFallback';
 
-export { Avatar, AvatarImage, AvatarFallback }
+const styles = StyleSheet.create({
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+    position: 'relative',
+    flexShrink: 0,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    aspectRatio: 1,
+  },
+  avatarFallback: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+    backgroundColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+
+export { Avatar, AvatarImage, AvatarFallback };

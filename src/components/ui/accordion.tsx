@@ -1,56 +1,146 @@
-import * as React from "react"
-import * as AccordionPrimitive from "@radix-ui/react-accordion"
-import { ChevronDown } from "lucide-react"
+import * as React from 'react';
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  Animated,
+  StyleSheet,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+} from 'react-native';
+import { AntDesign } from '@expo/vector-icons'; // Remplace lucide-react
+import { cn } from '@/lib/utils'; // On suppose que cn est adapté pour retourner des objets de style
 
-import { cn } from "@/lib/utils"
+// Activer LayoutAnimation sur Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
-const Accordion = AccordionPrimitive.Root
+// Type pour les props de Accordion
+interface AccordionProps {
+  children: React.ReactNode;
+  type?: 'single' | 'multiple';
+  defaultValue?: string | string[];
+}
 
-const AccordionItem = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
->(({ className, ...props }, ref) => (
-  <AccordionPrimitive.Item
-    ref={ref}
-    className={cn("border-b", className)}
-    {...props}
-  />
-))
-AccordionItem.displayName = "AccordionItem"
+// Composant principal Accordion
+const Accordion: React.FC<AccordionProps> = ({ children, type = 'single', defaultValue }) => {
+  const [openItems, setOpenItems] = React.useState<string[]>(Array.isArray(defaultValue) ? defaultValue : defaultValue ? [defaultValue] : []);
 
-const AccordionTrigger = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
-    <AccordionPrimitive.Trigger
-      ref={ref}
-      className={cn(
-        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
-        className
+  const toggleItem = (value: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (type === 'single') {
+      setOpenItems(openItems.includes(value) ? [] : [value]);
+    } else {
+      setOpenItems(
+        openItems.includes(value)
+          ? openItems.filter((item) => item !== value)
+          : [...openItems, value]
+      );
+    }
+  };
+
+  return <View>{React.Children.map(children, (child) => React.cloneElement(child as any, { openItems, toggleItem }))}</View>;
+};
+
+// Type pour AccordionItem
+interface AccordionItemProps {
+  value: string;
+  children: React.ReactNode;
+  openItems?: string[];
+  toggleItem?: (value: string) => void;
+}
+
+// Composant AccordionItem
+const AccordionItem: React.FC<AccordionItemProps> = ({ value, children, openItems = [], toggleItem }) => {
+  return (
+    <View style={styles.item}>
+      {React.Children.map(children, (child) =>
+        React.cloneElement(child as any, { value, isOpen: openItems.includes(value), toggleItem })
       )}
-      {...props}
+    </View>
+  );
+};
+
+// Type pour AccordionTrigger
+interface AccordionTriggerProps {
+  children: React.ReactNode;
+  value?: string;
+  isOpen?: boolean;
+  toggleItem?: (value: string) => void;
+}
+
+// Composant AccordionTrigger
+const AccordionTrigger: React.FC<AccordionTriggerProps> = ({ children, value = '', isOpen, toggleItem }) => {
+  const rotateAnim = React.useRef(new Animated.Value(isOpen ? 1 : 0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(rotateAnim, {
+      toValue: isOpen ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [isOpen]);
+
+  const rotateInterpolate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  return (
+    <TouchableOpacity
+      onPress={() => toggleItem?.(value)}
+      style={styles.trigger}
+      activeOpacity={0.7}
     >
-      {children}
-      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-    </AccordionPrimitive.Trigger>
-  </AccordionPrimitive.Header>
-))
-AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
+      <View style={styles.triggerContent}>
+        <Text style={styles.triggerText}>{children}</Text>
+        <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
+          <AntDesign name="down" size={16} color="#000" />
+        </Animated.View>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
-const AccordionContent = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Content
-    ref={ref}
-    className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
-    {...props}
-  >
-    <div className={cn("pb-4 pt-0", className)}>{children}</div>
-  </AccordionPrimitive.Content>
-))
+// Type pour AccordionContent
+interface AccordionContentProps {
+  children: React.ReactNode;
+  value?: string;
+  isOpen?: boolean;
+}
 
-AccordionContent.displayName = AccordionPrimitive.Content.displayName
+// Composant AccordionContent
+const AccordionContent: React.FC<AccordionContentProps> = ({ children, isOpen }) => {
+  return isOpen ? <View style={styles.content}>{children}</View> : null;
+};
 
-export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
+const styles = StyleSheet.create({
+  item: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  trigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+  },
+  triggerContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  triggerText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  content: {
+    paddingBottom: 16,
+    paddingTop: 0,
+  },
+});
+
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent };

@@ -1,144 +1,247 @@
-import * as React from "react"
-import { type DialogProps } from "@radix-ui/react-dialog"
-import { Command as CommandPrimitive } from "cmdk"
-import { Search } from "lucide-react"
+import React, { forwardRef, useState, useEffect } from 'react';
+import {
+  View,
+  TextInput,
+  FlatList,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  Pressable,
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { Dialog, DialogContent } from './Dialog'; // Assuming Dialog is already converted for React Native CLI
 
-import { cn } from "@/lib/utils"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+// Utility function to combine styles
+const cn = (...classes: (string | undefined)[]) => classes.filter(Boolean).join(' ');
 
-const Command = React.forwardRef<
-  React.ElementRef<typeof CommandPrimitive>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive
+interface CommandProps {
+  style?: any;
+  children: React.ReactNode;
+}
+
+const Command = forwardRef<View, CommandProps>(({ style, children }, ref) => (
+  <View
     ref={ref}
-    className={cn(
-      "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
-      className
-    )}
-    {...props}
-  />
-))
-Command.displayName = CommandPrimitive.displayName
+    style={[styles.command, style]}
+  >
+    {children}
+  </View>
+));
+Command.displayName = 'Command';
 
-interface CommandDialogProps extends DialogProps {}
+interface CommandDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children: React.ReactNode;
+}
 
-const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
+const CommandDialog: React.FC<CommandDialogProps> = ({ open, onOpenChange, children }) => {
   return (
-    <Dialog {...props}>
-      <DialogContent className="overflow-hidden p-0 shadow-lg">
-        <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
-          {children}
-        </Command>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent style={styles.dialogContent}>
+        <Command>{children}</Command>
       </DialogContent>
     </Dialog>
-  )
+  );
+};
+
+interface CommandInputProps {
+  style?: any;
+  value?: string;
+  onValueChange?: (value: string) => void;
+  placeholder?: string;
 }
 
-const CommandInput = React.forwardRef<
-  React.ElementRef<typeof CommandPrimitive.Input>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
->(({ className, ...props }, ref) => (
-  <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-    <CommandPrimitive.Input
+const CommandInput = forwardRef<TextInput, CommandInputProps>(
+  ({ style, value, onValueChange, placeholder, ...props }, ref) => (
+    <View style={styles.inputWrapper}>
+      <Icon name="search" size={16} color="#6b7280" style={styles.searchIcon} />
+      <TextInput
+        ref={ref}
+        style={[styles.input, style]}
+        value={value}
+        onChangeText={onValueChange}
+        placeholder={placeholder}
+        placeholderTextColor="#6b7280"
+        {...props}
+      />
+    </View>
+  )
+);
+CommandInput.displayName = 'CommandInput';
+
+interface CommandListProps {
+  style?: any;
+  children: React.ReactNode;
+}
+
+const CommandList = forwardRef<View, CommandListProps>(({ style, children }, ref) => (
+  <FlatList
+    ref={ref}
+    data={React.Children.toArray(children)}
+    renderItem={({ item }) => item}
+    keyExtractor={(_, index) => index.toString()}
+    style={[styles.list, style]}
+  />
+));
+CommandList.displayName = 'CommandList';
+
+interface CommandEmptyProps {
+  style?: any;
+  children: React.ReactNode;
+}
+
+const CommandEmpty = forwardRef<Text, CommandEmptyProps>(({ style, children }, ref) => (
+  <Text
+    ref={ref}
+    style={[styles.empty, style]}
+  >
+    {children}
+  </Text>
+));
+CommandEmpty.displayName = 'CommandEmpty';
+
+interface CommandGroupProps {
+  style?: any;
+  heading?: string;
+  children: React.ReactNode;
+}
+
+const CommandGroup = forwardRef<View, CommandGroupProps>(
+  ({ style, heading, children }, ref) => (
+    <View ref={ref} style={[styles.group, style]}>
+      {heading && <Text style={styles.groupHeading}>{heading}</Text>}
+      {children}
+    </View>
+  )
+);
+CommandGroup.displayName = 'CommandGroup';
+
+interface CommandSeparatorProps {
+  style?: any;
+}
+
+const CommandSeparator = forwardRef<View, CommandSeparatorProps>(
+  ({ style }, ref) => (
+    <View ref={ref} style={[styles.separator, style]} />
+  )
+);
+CommandSeparator.displayName = 'CommandSeparator';
+
+interface CommandItemProps {
+  style?: any;
+  onSelect?: () => void;
+  disabled?: boolean;
+  selected?: boolean;
+  children: React.ReactNode;
+}
+
+const CommandItem = forwardRef<TouchableOpacity, CommandItemProps>(
+  ({ style, onSelect, disabled, selected, children }, ref) => (
+    <TouchableOpacity
       ref={ref}
-      className={cn(
-        "flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      )}
-      {...props}
-    />
-  </div>
-))
-
-CommandInput.displayName = CommandPrimitive.Input.displayName
-
-const CommandList = React.forwardRef<
-  React.ElementRef<typeof CommandPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.List
-    ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
-    {...props}
-  />
-))
-
-CommandList.displayName = CommandPrimitive.List.displayName
-
-const CommandEmpty = React.forwardRef<
-  React.ElementRef<typeof CommandPrimitive.Empty>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
->((props, ref) => (
-  <CommandPrimitive.Empty
-    ref={ref}
-    className="py-6 text-center text-sm"
-    {...props}
-  />
-))
-
-CommandEmpty.displayName = CommandPrimitive.Empty.displayName
-
-const CommandGroup = React.forwardRef<
-  React.ElementRef<typeof CommandPrimitive.Group>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Group>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.Group
-    ref={ref}
-    className={cn(
-      "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
-      className
-    )}
-    {...props}
-  />
-))
-
-CommandGroup.displayName = CommandPrimitive.Group.displayName
-
-const CommandSeparator = React.forwardRef<
-  React.ElementRef<typeof CommandPrimitive.Separator>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.Separator
-    ref={ref}
-    className={cn("-mx-1 h-px bg-border", className)}
-    {...props}
-  />
-))
-CommandSeparator.displayName = CommandPrimitive.Separator.displayName
-
-const CommandItem = React.forwardRef<
-  React.ElementRef<typeof CommandPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.Item
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected='true']:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50",
-      className
-    )}
-    {...props}
-  />
-))
-
-CommandItem.displayName = CommandPrimitive.Item.displayName
-
-const CommandShortcut = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => {
-  return (
-    <span
-      className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground",
-        className
-      )}
-      {...props}
-    />
+      style={[
+        styles.item,
+        selected && styles.itemSelected,
+        disabled && styles.itemDisabled,
+        style,
+      ]}
+      onPress={onSelect}
+      disabled={disabled}
+      activeOpacity={0.7}
+    >
+      {children}
+    </TouchableOpacity>
   )
+);
+CommandItem.displayName = 'CommandItem';
+
+interface CommandShortcutProps {
+  style?: any;
+  children: React.ReactNode;
 }
-CommandShortcut.displayName = "CommandShortcut"
+
+const CommandShortcut: React.FC<CommandShortcutProps> = ({ style, children }) => (
+  <Text style={[styles.shortcut, style]}>{children}</Text>
+);
+CommandShortcut.displayName = 'CommandShortcut';
+
+const styles = StyleSheet.create({
+  command: {
+    flex: 1,
+    flexDirection: 'column',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+  },
+  dialogContent: {
+    padding: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+    opacity: 0.5,
+  },
+  input: {
+    flex: 1,
+    height: 44,
+    fontSize: 14,
+    backgroundColor: 'transparent',
+    color: '#111827',
+  },
+  list: {
+    maxHeight: 300,
+  },
+  empty: {
+    paddingVertical: 24,
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  group: {
+    padding: 4,
+  },
+  groupHeading: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#e5e7eb',
+    marginHorizontal: -4,
+  },
+  item: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  itemSelected: {
+    backgroundColor: '#f3f4f6',
+    color: '#111827',
+  },
+  itemDisabled: {
+    opacity: 0.5,
+  },
+  shortcut: {
+    marginLeft: 'auto',
+    fontSize: 12,
+    color: '#6b7280',
+  },
+});
 
 export {
   Command,
@@ -150,4 +253,4 @@ export {
   CommandItem,
   CommandShortcut,
   CommandSeparator,
-}
+};

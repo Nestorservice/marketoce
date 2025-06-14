@@ -1,36 +1,69 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 
-import { cn } from "@/lib/utils"
+// Utility function to combine styles
+const cn = (...classes: (string | undefined)[]) => classes.filter(Boolean).join(' ');
 
-const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
+// Badge variants for React Native
+const badgeVariants = (variant?: string) => {
+  const baseStyle = styles.badge;
+
+  switch (variant) {
+    case 'secondary':
+      return {
+        ...baseStyle,
+        backgroundColor: '#e5e7eb',
+        color: '#374151',
+      };
+    case 'destructive':
+      return {
+        ...baseStyle,
+        backgroundColor: '#ef4444',
+        color: '#fff',
+      };
+    case 'outline':
+      return {
+        ...baseStyle,
+        backgroundColor: 'transparent',
+        borderColor: '#374151',
+        color: '#374151',
+      };
+    default:
+      return {
+        ...baseStyle,
+        backgroundColor: '#2563eb',
+        color: '#fff',
+      };
   }
-)
+};
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
+interface BadgeProps {
+  style?: any;
+  variant?: 'default' | 'secondary' | 'destructive' | 'outline';
+  children: React.ReactNode;
 }
 
-export { Badge, badgeVariants }
+const Badge: React.FC<BadgeProps> = ({ style, variant, children }) => {
+  return (
+    <View style={[badgeVariants(variant), style]}>
+      <Text style={styles.text}>{children}</Text>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+  },
+  text: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+});
+
+export { Badge, badgeVariants };

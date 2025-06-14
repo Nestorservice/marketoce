@@ -1,56 +1,180 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+import React, { forwardRef } from 'react';
+import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
 
-import { cn } from "@/lib/utils"
+// Utility function to combine styles
+const cn = (...classes: (string | undefined)[]) => classes.filter(Boolean).join(' ');
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
+// Button variants for React Native
+const buttonVariants = (variant?: string, size?: string) => {
+  const baseStyle = {
+    ...styles.button,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 8,
+  };
+
+  // Variant styles
+  let variantStyle = {};
+  switch (variant) {
+    case 'destructive':
+      variantStyle = {
+        backgroundColor: '#ef4444',
+        color: '#fff',
+      };
+      break;
+    case 'outline':
+      variantStyle = {
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        backgroundColor: '#fff',
+        color: '#374151',
+      };
+      break;
+    case 'secondary':
+      variantStyle = {
+        backgroundColor: '#e5e7eb',
+        color: '#374151',
+      };
+      break;
+    case 'ghost':
+      variantStyle = {
+        backgroundColor: 'transparent',
+        color: '#374151',
+      };
+      break;
+    case 'link':
+      variantStyle = {
+        backgroundColor: 'transparent',
+        color: '#2563eb',
+        textDecorationLine: 'underline',
+      };
+      break;
+    default:
+      variantStyle = {
+        backgroundColor: '#2563eb',
+        color: '#fff',
+      };
+      break;
   }
-)
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
+  // Size styles
+  let sizeStyle = {};
+  switch (size) {
+    case 'sm':
+      sizeStyle = {
+        height: 36,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+      };
+      break;
+    case 'lg':
+      sizeStyle = {
+        height: 44,
+        paddingHorizontal: 32,
+        paddingVertical: 12,
+      };
+      break;
+    case 'icon':
+      sizeStyle = {
+        height: 40,
+        width: 40,
+        padding: 0,
+      };
+      break;
+    default:
+      sizeStyle = {
+        height: 40,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+      };
+      break;
+  }
+
+  return {
+    ...baseStyle,
+    ...variantStyle,
+    ...sizeStyle,
+  };
+};
+
+interface ButtonProps {
+  style?: any;
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+  asChild?: boolean;
+  children: React.ReactNode;
+  onPress?: () => void;
+  disabled?: boolean;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
+const Button = forwardRef<TouchableOpacity, ButtonProps>(
+  ({ style, variant, size, asChild = false, children, onPress, disabled, ...props }, ref) => {
+    const Comp = asChild ? View : TouchableOpacity;
+
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        style={[
+          buttonVariants(variant, size),
+          disabled && styles.disabled,
+          style,
+        ]}
+        onPress={onPress}
+        activeOpacity={0.7}
+        disabled={disabled}
         ref={ref}
         {...props}
-      />
-    )
+      >
+        {React.Children.map(children, (child) =>
+          typeof child === 'string' ? (
+            <Text
+              style={[
+                styles.text,
+                variant === 'link' && styles.linkText,
+                variant === 'outline' && styles.outlineText,
+                variant === 'secondary' && styles.secondaryText,
+                variant === 'ghost' && styles.ghostText,
+              ]}
+            >
+              {child}
+            </Text>
+          ) : (
+            child
+          )
+        )}
+      </Comp>
+    );
   }
-)
-Button.displayName = "Button"
+);
+Button.displayName = 'Button';
 
-export { Button, buttonVariants }
+const styles = StyleSheet.create({
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  text: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  linkText: {
+    color: '#2563eb',
+  },
+  outlineText: {
+    color: '#374151',
+  },
+  secondaryText: {
+    color: '#374151',
+  },
+  ghostText: {
+    color: '#374151',
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+});
+
+export { Button, buttonVariants };

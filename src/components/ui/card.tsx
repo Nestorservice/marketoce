@@ -1,79 +1,117 @@
-import * as React from "react"
+import React, { forwardRef } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 
-import { cn } from "@/lib/utils"
+// Utility function to combine styles
+const cn = (...classes: (string | undefined)[]) => classes.filter(Boolean).join(' ');
 
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
-      className
-    )}
-    {...props}
-  />
-))
-Card.displayName = "Card"
+const Card = forwardRef<View, { style?: any; children: React.ReactNode }>(
+  ({ style, children }, ref) => (
+    <View
+      ref={ref}
+      style={[styles.card, style]}
+    >
+      {children}
+    </View>
+  )
+);
+Card.displayName = 'Card';
 
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-))
-CardHeader.displayName = "CardHeader"
+const CardHeader = forwardRef<View, { style?: any; children: React.ReactNode }>(
+  ({ style, children }, ref) => (
+    <View
+      ref={ref}
+      style={[styles.header, style]}
+    >
+      {children}
+    </View>
+  )
+);
+CardHeader.displayName = 'CardHeader';
 
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
-      className
-    )}
-    {...props}
-  />
-))
-CardTitle.displayName = "CardTitle"
+const CardTitle = forwardRef<Text, { style?: any; children: React.ReactNode }>(
+  ({ style, children }, ref) => (
+    <Text
+      ref={ref}
+      style={[styles.title, style]}
+    >
+      {children}
+    </Text>
+  )
+);
+CardTitle.displayName = 'CardTitle';
 
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
-CardDescription.displayName = "CardDescription"
+const CardDescription = forwardRef<Text, { style?: any; children: React.ReactNode }>(
+  ({ style, children }, ref) => (
+    <Text
+      ref={ref}
+      style={[styles.description, style]}
+    >
+      {children}
+    </Text>
+  )
+);
+CardDescription.displayName = 'CardDescription';
 
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-))
-CardContent.displayName = "CardContent"
+const CardContent = forwardRef<View, { style?: any; children: React.ReactNode }>(
+  ({ style, children }, ref) => (
+    <View
+      ref={ref}
+      style={[styles.content, style]}
+    >
+      {children}
+    </View>
+  )
+);
+CardContent.displayName = 'CardContent';
 
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
-    {...props}
-  />
-))
-CardFooter.displayName = "CardFooter"
+const CardFooter = forwardRef<View, { style?: any; children: React.ReactNode }>(
+  ({ style, children }, ref) => (
+    <View
+      ref={ref}
+      style={[styles.footer, style]}
+    >
+      {children}
+    </View>
+  )
+);
+CardFooter.displayName = 'CardFooter';
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  header: {
+    flexDirection: 'column',
+    padding: 24,
+    gap: 6,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  description: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  content: {
+    padding: 24,
+    paddingTop: 0,
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 24,
+    paddingTop: 0,
+  },
+});
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };

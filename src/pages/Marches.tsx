@@ -1,21 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  ScrollView,
+  Linking,
+  Platform,
+  PermissionsAndroid,
+} from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import Geolocation from 'react-native-geolocation-service';
+import Toast from 'react-native-toast-message';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { Picker } from '@react-native-picker/picker';
 import Layout from '../components/Layout';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
-import { 
-  MapPin, 
-  Navigation, 
-  Clock, 
-  Ruler, 
-  Heart,
-  Star,
-  Phone,
-  Globe,
-  Search
-} from 'lucide-react';
-import { toast } from 'sonner';
 
 interface Market {
   id: string;
@@ -36,11 +36,10 @@ interface Market {
 }
 
 const Markets: React.FC = () => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const mapRef = useRef<MapView>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [apiKey, setApiKey] = useState('');
-  const [isApiKeySet, setIsApiKeySet] = useState(false);
+  const [isApiKeySet, setIsApiKeySet] = useState(true);
   const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -59,7 +58,7 @@ const Markets: React.FC = () => {
       phone: '01 43 26 45 87',
       website: 'marche-saint-germain.fr',
       isFavorite: true,
-      description: 'Marché traditionnel au cœur de Saint-Germain-des-Prés'
+      description: 'Marché traditionnel au cœur de Saint-Germain-des-Prés',
     },
     {
       id: '2',
@@ -73,7 +72,7 @@ const Markets: React.FC = () => {
       openHours: 'Mardi-Samedi 8h30-19h30, Dimanche 8h30-14h',
       phone: '01 42 71 28 56',
       isFavorite: false,
-      description: 'Le plus ancien marché couvert de Paris'
+      description: 'Le plus ancien marché couvert de Paris',
     },
     {
       id: '3',
@@ -86,7 +85,7 @@ const Markets: React.FC = () => {
       isOpen: false,
       openHours: 'Dimanche 9h-14h',
       isFavorite: false,
-      description: 'Marché entièrement dédié aux produits biologiques'
+      description: 'Marché entièrement dédié aux produits biologiques',
     },
     {
       id: '4',
@@ -99,468 +98,637 @@ const Markets: React.FC = () => {
       isOpen: true,
       openHours: 'Jeudi et Dimanche 7h-14h30',
       isFavorite: false,
-      description: 'Grand marché de plein air avec de nombreux producteurs'
-    }
+      description: 'Grand marché de plein air avec de nombreux producteurs',
+    },
   ]);
 
-  const categories = ['Marché couvert', 'Marché bio', 'Marché de plein air', 'Supermarché bio'];
+  const categories = ['all', 'Marché couvert', 'Marché bio', 'Marché de plein air', 'Supermarché bio'];
+
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Permission de localisation',
+            message: 'Cette application a besoin d\'accéder à votre localisation pour afficher les marchés à proximité.',
+            buttonNeutral: 'Demander plus tard',
+            buttonNegative: 'Annuler',
+            buttonPositive: 'OK',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true;
+  };
 
   const initializeMap = () => {
-    if (!mapRef.current || !window.google || !isApiKeySet) return;
+    if (!mapRef.current) return;
 
-    const mapInstance = new google.maps.Map(mapRef.current, {
-      center: { lat: 48.8566, lng: 2.3522 }, // Paris par défaut
-      zoom: 13,
-      styles: [
-        {
-          featureType: 'poi',
-          elementType: 'labels',
-          stylers: [{ visibility: 'off' }]
-        }
-      ]
-    });
-
-    setMap(mapInstance);
-
-    // Ajouter les marqueurs des marchés
-    markets.forEach((market) => {
-      const marker = new google.maps.Marker({
-        position: { lat: market.latitude, lng: market.longitude },
-        map: mapInstance,
-        title: market.name,
-        icon: {
-          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-            <svg fill="${market.isOpen ? '#22c55e' : '#ef4444'}" width="32" height="32" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-            </svg>
-          `),
-          scaledSize: new google.maps.Size(32, 32),
-        },
-      });
-
-      const infoWindow = new google.maps.InfoWindow({
-        content: `
-          <div style="max-width: 250px;">
-            <h3 style="margin: 0 0 8px 0; font-weight: bold;">${market.name}</h3>
-            <p style="margin: 0 0 4px 0; color: #666; font-size: 14px;">${market.address}</p>
-            <div style="display: flex; align-items: center; margin: 4px 0;">
-              <span style="color: ${market.isOpen ? '#22c55e' : '#ef4444'}; font-weight: bold; font-size: 12px;">
-                ${market.isOpen ? '● OUVERT' : '● FERMÉ'}
-              </span>
-            </div>
-            <p style="margin: 4px 0; color: #666; font-size: 12px;">${market.openHours}</p>
-            <div style="display: flex; align-items: center; margin: 4px 0;">
-              <span style="color: #fbbf24;">★</span>
-              <span style="margin-left: 4px; font-size: 14px;">${market.rating}/5</span>
-            </div>
-          </div>
-        `,
-      });
-
-      marker.addListener('click', () => {
-        setSelectedMarket(market);
-        infoWindow.open(mapInstance, marker);
-      });
+    mapRef.current.animateToRegion({
+      latitude: 48.8566,
+      longitude: 2.3522,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
     });
   };
 
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setUserLocation(location);
-          
-          if (map) {
-            map.setCenter(location);
-            map.setZoom(15);
-            
-            // Ajouter un marqueur pour la position de l'utilisateur
-            new google.maps.Marker({
-              position: location,
-              map,
-              title: 'Votre position',
-              icon: {
-                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                  <svg fill="#3b82f6" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="8" fill="#3b82f6"/>
-                    <circle cx="12" cy="12" r="3" fill="white"/>
-                  </svg>
-                `),
-                scaledSize: new google.maps.Size(24, 24),
-              },
-            });
-          }
-          
-          calculateDistances(location);
-          toast.success('Position actuelle obtenue');
-        },
-        (error) => {
-          toast.error('Impossible d\'obtenir votre position');
-          console.error('Erreur de géolocalisation:', error);
-        }
-      );
-    } else {
-      toast.error('La géolocalisation n\'est pas supportée par ce navigateur');
-    }
-  };
-
-  const calculateDistances = (userLoc: { lat: number; lng: number }) => {
-    if (!window.google) return;
-
-    const service = new google.maps.DistanceMatrixService();
-    const destinations = markets.map(market => 
-      new google.maps.LatLng(market.latitude, market.longitude)
-    );
-
-    service.getDistanceMatrix({
-      origins: [new google.maps.LatLng(userLoc.lat, userLoc.lng)],
-      destinations,
-      travelMode: google.maps.TravelMode.WALKING,
-      unitSystem: google.maps.UnitSystem.METRIC,
-    }, (response, status) => {
-      if (status === 'OK' && response) {
-        const updatedMarkets = markets.map((market, index) => {
-          const element = response.rows[0].elements[index];
-          return {
-            ...market,
-            distance: element.distance ? element.distance.value / 1000 : undefined,
-            duration: element.duration ? element.duration.text : undefined,
-          };
-        });
-        setMarkets(updatedMarkets.sort((a, b) => (a.distance || 999) - (b.distance || 999)));
-      }
-    });
-  };
-
-  const toggleFavorite = (marketId: string) => {
-    setMarkets(markets.map(market => 
-      market.id === marketId ? { ...market, isFavorite: !market.isFavorite } : market
-    ));
-    toast.success('Favoris mis à jour');
-  };
-
-  const getDirections = (market: Market) => {
-    if (userLocation) {
-      const url = `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${market.latitude},${market.longitude}`;
-      window.open(url, '_blank');
-    } else {
-      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(market.address)}`;
-      window.open(url, '_blank');
-    }
-  };
-
-  const loadGoogleMaps = () => {
-    if (!apiKey) {
-      toast.error('Veuillez entrer votre clé API Google Maps');
+  const getCurrentLocation = async () => {
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      Toast.show({ type: 'error', text1: 'Permission de localisation refusée' });
       return;
     }
 
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      setIsApiKeySet(true);
-      initializeMap();
-    };
-    script.onerror = () => {
-      toast.error('Erreur lors du chargement de Google Maps');
-    };
-    document.head.appendChild(script);
+    Geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setUserLocation(location);
+
+        if (mapRef.current) {
+          mapRef.current.animateToRegion({
+            latitude: location.lat,
+            longitude: location.lng,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          });
+        }
+
+        calculateDistances(location);
+        Toast.show({ type: 'success', text1: 'Position actuelle obtenue' });
+      },
+      (error) => {
+        Toast.show({ type: 'error', text1: 'Impossible d\'obtenir votre position' });
+        console.error('Erreur de géolocalisation:', error);
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
+    );
   };
 
-  const filteredMarkets = markets.filter(market => {
-    const matchesSearch = market.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          market.address.toLowerCase().includes(searchTerm.toLowerCase());
+  const calculateDistances = (userLoc: { lat: number; lng: number }) => {
+    const updatedMarkets = markets.map((market) => {
+      const distance = getDistance(userLoc.lat, userLoc.lng, market.latitude, market.longitude);
+      return {
+        ...market,
+        distance,
+        duration: estimateDuration(distance),
+      };
+    });
+    setMarkets(updatedMarkets.sort((a, b) => (a.distance || 999) - (b.distance || 999)));
+  };
+
+  const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const estimateDuration = (distance: number) => {
+    const minutes = Math.round((distance / 5) * 60);
+    return `${minutes} min`;
+  };
+
+  const toggleFavorite = (marketId: string) => {
+    setMarkets(
+      markets.map((market) =>
+        market.id === marketId ? { ...market, isFavorite: !market.isFavorite } : market
+      )
+    );
+    Toast.show({ type: 'success', text1: 'Favoris mis à jour' });
+  };
+
+  const getDirections = async (market: Market) => {
+    let url;
+    if (userLocation) {
+      url = `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${market.latitude},${market.longitude}`;
+    } else {
+      url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(market.address)}`;
+    }
+
+    if (await Linking.canOpenURL(url)) {
+      Linking.openURL(url);
+    } else {
+      Toast.show({ type: 'error', text1: 'Impossible d\'ouvrir l\'itinéraire' });
+    }
+  };
+
+  const filteredMarkets = markets.filter((market) => {
+    const matchesSearch =
+      market.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      market.address.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || market.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   useEffect(() => {
-    if (isApiKeySet && window.google) {
-      initializeMap();
-    }
-  }, [isApiKeySet, markets]);
+    initializeMap();
+  }, []);
 
   if (!isApiKeySet) {
     return (
       <Layout>
-        <Card>
-          <CardHeader>
-            <CardTitle>Configuration Google Maps</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Clé API Google Maps *
-              </label>
-              <Input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Entrez votre clé API Google Maps"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Obtenez votre clé API sur{' '}
-                <a 
-                  href="https://console.cloud.google.com/apis/credentials" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  Google Cloud Console
-                </a>
-              </p>
-            </div>
-            <Button onClick={loadGoogleMaps} className="w-full">
-              Charger Google Maps
-            </Button>
-          </CardContent>
-        </Card>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Configuration Google Maps</Text>
+          <View style={styles.cardContent}>
+            <Text style={styles.label}>Clé API Google Maps *</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              value={apiKey}
+              onChangeText={setApiKey}
+              placeholder="Entrez votre clé API Google Maps"
+            />
+            <Text style={styles.hint}>
+              Obtenez votre clé API sur{' '}
+              <Text
+                style={styles.link}
+                onPress={() => Linking.openURL('https://console.cloud.google.com/apis/credentials')}
+              >
+                Google Cloud Console
+              </Text>
+            </Text>
+            <TouchableOpacity style={styles.button} onPress={() => setIsApiKeySet(true)}>
+              <Text style={styles.buttonText}>Charger Google Maps</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Marchés près de chez vous</h1>
-            <p className="text-gray-600">Trouvez les meilleurs marchés pour vos courses</p>
-          </div>
-          
-          <Button onClick={getCurrentLocation} className="bg-blue-600 hover:bg-blue-700">
-            <Navigation className="w-4 h-4 mr-2" />
-            Localiser
-          </Button>
-        </div>
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Marchés près de chez vous</Text>
+            <Text style={styles.subtitle}>Trouvez les meilleurs marchés pour vos courses</Text>
+          </View>
+          <TouchableOpacity style={styles.locateButton} onPress={getCurrentLocation}>
+            <Icon name="navigation" size={16} color="#fff" />
+            <Text style={styles.buttonText}>Localiser</Text>
+          </TouchableOpacity>
+        </View>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Carte */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Carte des marchés</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div ref={mapRef} className="w-full h-96 rounded-lg border" />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Informations du marché sélectionné */}
-          <div>
-            {selectedMarket ? (
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{selectedMarket.name}</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleFavorite(selectedMarket.id)}
-                    >
-                      <Heart className={`w-5 h-5 ${selectedMarket.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Badge className={selectedMarket.isOpen ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                      {selectedMarket.isOpen ? 'OUVERT' : 'FERMÉ'}
-                    </Badge>
-                    <Badge variant="outline" className="ml-2">{selectedMarket.category}</Badge>
-                  </div>
-                  
-                  <div className="flex items-center text-sm">
-                    <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                    <span className="font-medium">{selectedMarket.rating}/5</span>
-                  </div>
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-start">
-                      <MapPin className="w-4 h-4 text-gray-400 mr-2 mt-0.5" />
-                      <span>{selectedMarket.address}</span>
-                    </div>
-                    
-                    <div className="flex items-start">
-                      <Clock className="w-4 h-4 text-gray-400 mr-2 mt-0.5" />
-                      <span>{selectedMarket.openHours}</span>
-                    </div>
-                    
-                    {selectedMarket.distance && (
-                      <div className="flex items-center">
-                        <Ruler className="w-4 h-4 text-gray-400 mr-2" />
-                        <span>{selectedMarket.distance.toFixed(1)} km</span>
-                        {selectedMarket.duration && (
-                          <span className="ml-2 text-gray-500">({selectedMarket.duration})</span>
-                        )}
-                      </div>
-                    )}
-                    
-                    {selectedMarket.phone && (
-                      <div className="flex items-center">
-                        <Phone className="w-4 h-4 text-gray-400 mr-2" />
-                        <a href={`tel:${selectedMarket.phone}`} className="text-blue-600 hover:underline">
-                          {selectedMarket.phone}
-                        </a>
-                      </div>
-                    )}
-                    
-                    {selectedMarket.website && (
-                      <div className="flex items-center">
-                        <Globe className="w-4 h-4 text-gray-400 mr-2" />
-                        <a 
-                          href={`https://${selectedMarket.website}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          {selectedMarket.website}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <p className="text-sm text-gray-600">{selectedMarket.description}</p>
-                  
-                  <Button 
-                    onClick={() => getDirections(selectedMarket)}
-                    className="w-full"
-                  >
-                    <Navigation className="w-4 h-4 mr-2" />
-                    Itinéraire
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Sélectionnez un marché
-                  </h3>
-                  <p className="text-gray-600">
-                    Cliquez sur un marqueur sur la carte pour voir les détails
-                  </p>
-                </CardContent>
-              </Card>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Carte des marchés</Text>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            initialRegion={{
+              latitude: 48.8566,
+              longitude: 2.3522,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+          >
+            {markets.map((market) => (
+              <Marker
+                key={market.id}
+                coordinate={{ latitude: market.latitude, longitude: market.longitude }}
+                title={market.name}
+                description={market.address}
+                pinColor={market.isOpen ? 'green' : 'red'}
+                onPress={() => setSelectedMarket(market)}
+              />
+            ))}
+            {userLocation && (
+              <Marker
+                coordinate={{ latitude: userLocation.lat, longitude: userLocation.lng }}
+                title="Votre position"
+                pinColor="blue"
+              />
             )}
-          </div>
-        </div>
+          </MapView>
+        </View>
 
-        {/* Filtres et recherche */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="Rechercher un marché..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+        <View style={styles.card}>
+          {selectedMarket ? (
+            <View>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>{selectedMarket.name}</Text>
+                <TouchableOpacity onPress={() => toggleFavorite(selectedMarket.id)}>
+                  <Icon
+                    name={selectedMarket.isFavorite ? 'favorite' : 'favorite-border'}
+                    size={20}
+                    color={selectedMarket.isFavorite ? '#ef4444' : '#9ca3af'}
                   />
-                </div>
-              </div>
-              
-              <select 
-                value={selectedCategory} 
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 bg-white"
-              >
-                <option value="all">Toutes les catégories</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Liste des marchés */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredMarkets.map((market) => (
-            <Card 
-              key={market.id} 
-              className={`cursor-pointer hover:shadow-lg transition-shadow ${
-                selectedMarket?.id === market.id ? 'ring-2 ring-blue-500' : ''
-              }`}
-              onClick={() => setSelectedMarket(market)}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg line-clamp-2">{market.name}</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(market.id);
-                    }}
-                    className="p-1"
+                </TouchableOpacity>
+              </View>
+              <View style={styles.cardContent}>
+                <View style={styles.badges}>
+                  <View
+                    style={[
+                      styles.badge,
+                      { backgroundColor: selectedMarket.isOpen ? '#dcfce7' : '#fee2e2' },
+                    ]}
                   >
-                    <Heart className={`w-5 h-5 ${market.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
-                  </Button>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Badge className={market.isOpen ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                      {market.isOpen ? 'OUVERT' : 'FERMÉ'}
-                    </Badge>
-                    <Badge variant="outline">{market.category}</Badge>
-                  </div>
-                  
-                  <div className="flex items-center text-sm">
-                    <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                    <span className="font-medium">{market.rating}/5</span>
-                  </div>
-                  
-                  <p className="text-sm text-gray-600 line-clamp-2">{market.address}</p>
-                  
-                  {market.distance && (
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Ruler className="w-4 h-4 mr-1" />
-                      <span>{market.distance.toFixed(1)} km</span>
-                      {market.duration && (
-                        <span className="ml-2">• {market.duration}</span>
-                      )}
-                    </div>
-                  )}
-                  
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        getDirections(market);
-                      }}
-                      className="flex-1"
+                    <Text
+                      style={{ color: selectedMarket.isOpen ? '#15803d' : '#b91c1c' }}
                     >
-                      <Navigation className="w-4 h-4 mr-1" />
-                      Itinéraire
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                      {selectedMarket.isOpen ? 'OUVERT' : 'FERMÉ'}
+                    </Text>
+                  </View>
+                  <View style={[styles.badge, styles.outlineBadge]}>
+                    <Text>{selectedMarket.category}</Text>
+                  </View>
+                </View>
+                <View style={styles.rating}>
+                  <Icon name="star" size={16} color="#fbbf24" />
+                  <Text style={styles.ratingText}>{selectedMarket.rating}/5</Text>
+                </View>
+                <View style={styles.info}>
+                  <View style={styles.infoItem}>
+                    <Icon name="location-pin" size={16} color="#9ca3af" />
+                    <Text>{selectedMarket.address}</Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Icon name="access-time" size={16} color="#9ca3af" />
+                    <Text>{selectedMarket.openHours}</Text>
+                  </View>
+                  {selectedMarket.distance && (
+                    <View style={styles.infoItem}>
+                      <Icon name="straighten" size={16} color="#9ca3af" />
+                      <Text>
+                        {selectedMarket.distance.toFixed(1)} km
+                        {selectedMarket.duration && ` (${selectedMarket.duration})`}
+                      </Text>
+                    </View>
+                  )}
+                  {selectedMarket.phone && (
+                    <View style={styles.infoItem}>
+                      <Icon name="phone" size={16} color="#9ca3af" />
+                      <Text
+                        style={styles.link}
+                        onPress={() => Linking.openURL(`tel:${selectedMarket.phone}`)}
+                      >
+                        {selectedMarket.phone}
+                      </Text>
+                    </View>
+                  )}
+                  {selectedMarket.website && (
+                    <View style={styles.infoItem}>
+                      <Icon name="language" size={16} color="#9ca3af" />
+                      <Text
+                        style={styles.link}
+                        onPress={() => Linking.openURL(`https://${selectedMarket.website}`)}
+                      >
+                        {selectedMarket.website}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.description}>{selectedMarket.description}</Text>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => getDirections(selectedMarket)}
+                >
+                  <Icon name="navigation" size={16} color="#fff" />
+                  <Text style={styles.buttonText}>Itinéraire</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.emptyCard}>
+              <Icon name="location-pin" size={64} color="#9ca3af" />
+              <Text style={styles.emptyTitle}>Sélectionnez un marché</Text>
+              <Text style={styles.emptyText}>
+                Cliquez sur un marqueur sur la carte pour voir les détails
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.filterContainer}>
+            <View style={styles.searchContainer}>
+              <Icon name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Rechercher un marché..."
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+              />
+            </View>
+            <View style={styles.picker}>
+              <Picker
+                selectedValue={selectedCategory}
+                onValueChange={(value) => setSelectedCategory(value)}
+                style={styles.pickerStyle}
+              >
+                {categories.map((category) => (
+                  <Picker.Item
+                    key={category}
+                    label={category === 'all' ? 'Toutes les catégories' : category}
+                    value={category}
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.marketList}>
+          {filteredMarkets.map((market) => (
+            <TouchableOpacity
+              key={market.id}
+              style={[
+                styles.card,
+                selectedMarket?.id === market.id && styles.selectedCard,
+              ]}
+              onPress={() => setSelectedMarket(market)}
+            >
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle} numberOfLines={2}>
+                  {market.name}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => toggleFavorite(market.id)}
+                  style={styles.favoriteButton}
+                >
+                  <Icon
+                    name={market.isFavorite ? 'favorite' : 'favorite-border'}
+                    size={20}
+                    color={market.isFavorite ? '#ef4444' : '#9ca3af'}
+                  />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.cardContent}>
+                <View style={styles.badges}>
+                  <View
+                    style={[
+                      styles.badge,
+                      { backgroundColor: market.isOpen ? '#dcfce7' : '#fee2e2' },
+                    ]}
+                  >
+                    <Text style={{ color: market.isOpen ? '#15803d' : '#b91c1c' }}>
+                      {market.isOpen ? 'OUVERT' : 'FERMÉ'}
+                    </Text>
+                  </View>
+                  <View style={[styles.badge, styles.outlineBadge]}>
+                    <Text>{market.category}</Text>
+                  </View>
+                </View>
+                <View style={styles.rating}>
+                  <Icon name="star" size={16} color="#fbbf24" />
+                  <Text style={styles.ratingText}>{market.rating}/5</Text>
+                </View>
+                <Text style={styles.address} numberOfLines={2}>
+                  {market.address}
+                </Text>
+                {market.distance && (
+                  <View style={styles.distance}>
+                    <Icon name="straighten" size={16} color="#9ca3af" />
+                    <Text>
+                      {market.distance.toFixed(1)} km
+                      {market.duration && ` • ${market.duration}`}
+                    </Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.outlineButton}
+                  onPress={() => getDirections(market)}
+                >
+                  <Icon name="navigation" size={16} color="#2563eb" />
+                  <Text style={styles.outlineButtonText}>Itinéraire</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
           ))}
-        </div>
-      </div>
+        </View>
+      </ScrollView>
     </Layout>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#4b5563',
+  },
+  locateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563eb',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563eb',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  cardContent: {
+    marginTop: 8,
+  },
+  map: {
+    width: '100%',
+    height: 300,
+    borderRadius: 8,
+  },
+  badges: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  badge: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  outlineBadge: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: 'transparent',
+  },
+  rating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  ratingText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  info: {
+    gap: 8,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  description: {
+    fontSize: 14,
+    color: '#4b5563',
+    marginVertical: 8,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginVertical: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#4b5563',
+    textAlign: 'center',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+  },
+  picker: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  pickerStyle: {
+    height: 40,
+    fontSize: 16,
+  },
+  marketList: {
+    gap: 16,
+  },
+  selectedCard: {
+    borderWidth: 2,
+    borderColor: '#2563eb',
+  },
+  favoriteButton: {
+    padding: 4,
+  },
+  address: {
+    fontSize: 14,
+    color: '#4b5563',
+    marginVertical: 4,
+  },
+  distance: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 14,
+    color: '#6b7280',
+    marginVertical: 4,
+  },
+  outlineButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  outlineButtonText: {
+    color: '#2563eb',
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 6,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  hint: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 16,
+  },
+  link: {
+    color: '#2563eb',
+    textDecorationLine: 'underline',
+  },
+});
 
 export default Markets;

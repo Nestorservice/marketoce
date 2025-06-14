@@ -1,17 +1,15 @@
-
-import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Home, 
-  ChefHat, 
-  Calendar, 
-  ShoppingCart, 
-  Bot, 
-  MapPin, 
-  LogOut,
-  Menu,
-  X
-} from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  SafeAreaView,
+  DrawerLayoutAndroid,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import LanguageSelector from './LanguageSelector';
@@ -23,186 +21,269 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const navigation = useNavigation();
+  const drawer = React.useRef<DrawerLayoutAndroid>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigation.navigate('Home');
   };
 
   const menuItems = [
-    { 
-      path: '/dashboard', 
-      icon: Home, 
-      label: t('nav.home') 
-    },
-    { 
-      path: '/mes-plats', 
-      icon: ChefHat, 
-      label: t('nav.myPlates') 
-    },
-    { 
-      path: '/programmation', 
-      icon: Calendar, 
-      label: t('nav.planning') 
-    },
-    { 
-      path: '/liste-de-courses', 
-      icon: ShoppingCart, 
-      label: t('nav.shopping') 
-    },
-    { 
-      path: '/assistant', 
-      icon: Bot, 
-      label: t('nav.assistant') 
-    },
-    { 
-      path: '/marches', 
-      icon: MapPin, 
-      label: t('nav.markets') 
-    }
+    { path: 'Dashboard', icon: 'home', label: t('nav.home') },
+    { path: 'MesPlats', icon: 'restaurant', label: t('nav.myPlates') },
+    { path: 'Programmation', icon: 'calendar-today', label: t('nav.planning') },
+    { path: 'ListeDeCourses', icon: 'shopping-cart', label: t('nav.shopping') },
+    { path: 'Assistant', icon: 'assistant', label: t('nav.assistant') },
+    { path: 'Marches', icon: 'location-on', label: t('nav.markets') },
   ];
+
+  const renderDrawerContent = () => (
+    <View style={styles.drawer}>
+      <View style={styles.drawerHeader}>
+        <View style={styles.logoContainer}>
+          <Icon name="restaurant" size={20} color="#fff" />
+        </View>
+        <Text style={styles.appName}>SmartMeal</Text>
+        <TouchableOpacity
+          onPress={() => drawer.current?.closeDrawer()}
+          style={styles.closeButton}
+        >
+          <Icon name="close" size={20} color="#6b7280" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.nav}>
+        {menuItems.map((item) => (
+          <TouchableOpacity
+            key={item.path}
+            style={styles.navItem}
+            onPress={() => {
+              navigation.navigate(item.path);
+              drawer.current?.closeDrawer();
+            }}
+          >
+            <Icon name={item.icon} size={20} color="#374151" />
+            <Text style={styles.navText}>{item.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <View style={styles.drawerFooter}>
+        <View style={styles.userInfo}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {user?.firstName?.[0]?.toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.userDetails}>
+            <Text style={styles.userName} numberOfLines={1}>
+              {user?.firstName} {user?.lastName}
+            </Text>
+            <Text style={styles.userEmail} numberOfLines={1}>
+              {user?.email}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Icon name="logout" size={20} color="#374151" />
+          <Text style={styles.logoutText}>{t('nav.logout')}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   if (user?.role === 'admin') {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                  <ChefHat className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold text-gray-900">SmartMeal Admin</span>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <LanguageSelector />
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>{t('nav.logout')}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
-        
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <SafeAreaView style={styles.adminContainer}>
+        <View style={styles.adminHeader}>
+          <View style={styles.logoContainer}>
+            <Icon name="restaurant" size={20} color="#fff" />
+          </View>
+          <Text style={styles.adminTitle}>SmartMeal Admin</Text>
+          <View style={styles.adminHeaderRight}>
+            <LanguageSelector />
+            <TouchableOpacity style={styles.logoutButtonSmall} onPress={handleLogout}>
+              <Icon name="logout" size={20} color="#374151" />
+              <Text style={styles.logoutText}>{t('nav.logout')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        <ScrollView contentContainerStyle={styles.adminContent}>
           {children}
-        </main>
-      </div>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-75 lg:hidden z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
-        
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-              <ChefHat className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-bold text-gray-900">SmartMeal</span>
-          </div>
-          
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1 rounded-md text-gray-500 hover:text-gray-700"
+    <SafeAreaView style={styles.container}>
+      <DrawerLayoutAndroid
+        ref={drawer}
+        drawerWidth={280}
+        drawerPosition="left"
+        renderNavigationView={renderDrawerContent}
+      >
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            onPress={() => drawer.current?.openDrawer()}
+            style={styles.menuButton}
           >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <nav className="mt-6 px-3">
-          <div className="space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-green-100 text-green-700 border-r-2 border-green-500'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-gray-200">
-          <div className="flex items-center space-x-3 px-3 py-2 text-sm text-gray-500">
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-              <span className="text-xs font-medium text-gray-600">
-                {user?.firstName?.[0]?.toUpperCase()}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-900 truncate">
-                {user?.firstName} {user?.lastName}
-              </p>
-              <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-            </div>
-          </div>
-          
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-3 py-2 mt-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>{t('nav.logout')}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Top bar for mobile */}
-        <div className="lg:hidden bg-white shadow-sm border-b border-gray-200">
-          <div className="flex items-center justify-between h-16 px-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-md text-gray-500 hover:text-gray-700"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            
-            <LanguageSelector />
-          </div>
-        </div>
-
-        {/* Page content */}
-        <main className="py-6 px-4 sm:px-6 lg:px-8">
+            <Icon name="menu" size={24} color="#374151" />
+          </TouchableOpacity>
+          <LanguageSelector />
+        </View>
+        <ScrollView contentContainerStyle={styles.content}>
           {children}
-        </main>
-      </div>
-    </div>
+        </ScrollView>
+      </DrawerLayoutAndroid>
+    </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f3f4f6',
+  },
+  adminContainer: {
+    flex: 1,
+    backgroundColor: '#f3f4f6',
+  },
+  adminHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  adminTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  adminHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  adminContent: {
+    padding: 16,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  menuButton: {
+    padding: 8,
+  },
+  content: {
+    padding: 16,
+  },
+  drawer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  logoContainer: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#16a34a',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  appName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginLeft: 12,
+    flex: 1,
+  },
+  closeButton: {
+    padding: 8,
+  },
+  nav: {
+    padding: 12,
+  },
+  navItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  navText: {
+    fontSize: 14,
+    color: '#374151',
+    marginLeft: 12,
+  },
+  drawerFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#4b5563',
+  },
+  userDetails: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  userName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  userEmail: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+  },
+  logoutButtonSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+  },
+  logoutText: {
+    fontSize: 14,
+    color: '#374151',
+    marginLeft: 8,
+  },
+});
 
 export default Layout;

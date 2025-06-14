@@ -6,7 +6,7 @@ import {
   updateProfile 
 } from 'firebase/auth';
 import { doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
-import { toast } from 'sonner';
+import Toast from 'react-native-toast-message';
 
 const AuthContext = createContext();
 
@@ -18,7 +18,6 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fonction d'inscription
   const register = async (email, password, firstName, lastName) => {
     try {
       console.log('Début de l\'inscription...');
@@ -47,17 +46,25 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Erreur dans register :', error);
       if (error.code === 'auth/network-request-failed') {
-        toast.error('Erreur de connexion réseau. Veuillez vérifier votre connexion Internet.');
+        Toast.show({
+          type: 'error',
+          text1: 'Erreur de connexion réseau. Veuillez vérifier votre connexion Internet.',
+        });
       } else if (error.code === 'permission-denied') {
-        toast.error('Permissions insuffisantes pour écrire dans la base de données.');
+        Toast.show({
+          type: 'error',
+          text1: 'Permissions insuffisantes pour écrire dans la base de données.',
+        });
       } else {
-        toast.error(`Erreur lors de l'inscription : ${error.message}`);
+        Toast.show({
+          type: 'error',
+          text1: `Erreur lors de l'inscription : ${error.message}`,
+        });
       }
       throw error;
     }
   };
 
-  // Fonction de connexion
   const login = async (email, password) => {
     try {
       console.log('Début de la connexion...');
@@ -68,21 +75,35 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Erreur dans login :', error);
       if (error.code === 'auth/wrong-password') {
-        toast.error('Mot de passe incorrect.');
+        Toast.show({
+          type: 'error',
+          text1: 'Mot de passe incorrect.',
+        });
       } else if (error.code === 'auth/user-not-found') {
-        toast.error('Aucun utilisateur trouvé avec cet email.');
+        Toast.show({
+          type: 'error',
+          text1: 'Aucun utilisateur trouvé avec cet email.',
+        });
       } else if (error.code === 'auth/invalid-credential') {
-        toast.error('Identifiants invalides.');
+        Toast.show({
+          type: 'error',
+          text1: 'Identifiants invalides.',
+        });
       } else if (error.code === 'auth/network-request-failed') {
-        toast.error('Erreur de connexion réseau. Veuillez vérifier votre connexion Internet.');
+        Toast.show({
+          type: 'error',
+          text1: 'Erreur de connexion réseau. Veuillez vérifier votre connexion Internet.',
+        });
       } else {
-        toast.error(`Erreur lors de la connexion : ${error.message}`);
+        Toast.show({
+          type: 'error',
+          text1: `Erreur lors de la connexion : ${error.message}`,
+        });
       }
       throw error;
     }
   };
 
-  // ✅ Fonction de mise à jour du profil utilisateur
   const updateUserProfile = async (updates) => {
     try {
       if (!auth.currentUser) {
@@ -92,13 +113,11 @@ export const AuthProvider = ({ children }) => {
       const { displayName, firstName, lastName, email, ...rest } = updates;
       const uid = auth.currentUser.uid;
 
-      // 🔹 Mise à jour du profil Firebase Auth
       if (displayName) {
         await updateProfile(auth.currentUser, { displayName });
         console.log('Profil Firebase Auth mis à jour.');
       }
 
-      // 🔹 Mise à jour du document Firestore
       const userRef = doc(db, 'users', uid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
@@ -116,15 +135,20 @@ export const AuthProvider = ({ children }) => {
         throw new Error("Document utilisateur introuvable dans Firestore.");
       }
 
-      toast.success("Profil mis à jour avec succès !");
+      Toast.show({
+        type: 'success',
+        text1: "Profil mis à jour avec succès !",
+      });
     } catch (error) {
       console.error('Erreur dans updateUserProfile :', error);
-      toast.error(`Erreur lors de la mise à jour du profil : ${error.message}`);
+      Toast.show({
+        type: 'error',
+        text1: `Erreur lors de la mise à jour du profil : ${error.message}`,
+      });
       throw error;
     }
   };
 
-  // Écouter les changements d'état d'authentification
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setCurrentUser(user);
@@ -139,7 +163,7 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     register,
     login,
-    updateUserProfile, // ✅ exposé dans le contexte
+    updateUserProfile,
   };
 
   return (
